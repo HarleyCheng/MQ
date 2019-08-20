@@ -1,0 +1,306 @@
+---
+title: "Example 2"
+author: "Sachi"
+date: "7/31/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Generate double decrement table
+
+### Independent rates
+
+Need a vector of ages $x$ and the two vectors of independent rates, $q_x^d$ and $q_x^w$. The $q_x^d$ are given by Australian insured 2004--8 ultimate (2+) death only non-smoker rates for males. The $q_x^w$ are given by $$q_{[x]+t}^w = \max{(0.05, 0.2-0.02t)},\qquad t=0,1,\ldots,9.$$
+
+```{r}
+x <- c()
+x[50:60] <- 50:60
+x
+
+qx.d.ind <- c()
+
+qx.d.ind[50] <- 0.00142
+qx.d.ind[51] <- 0.00156
+qx.d.ind[52] <- 0.00172
+qx.d.ind[53] <- 0.00189
+qx.d.ind[54] <- 0.00208
+qx.d.ind[55] <- 0.00230
+qx.d.ind[56] <- 0.00255
+qx.d.ind[57] <- 0.00286
+qx.d.ind[58] <- 0.00320
+qx.d.ind[59] <- 0.00358
+qx.d.ind
+
+qx.w.ind <- c()
+
+qx.w.ind[50:59] <- pmax(.05,0.2-.02*0:9)
+qx.w.ind
+
+```
+
+### Dependent rates
+
+We can now calculate the multiple decrement table. first for deaths.
+
+```{r}
+qx.d.dep <- c()
+qx.d.dep[50:59] <- qx.d.ind[50:59]*(1-0.5*qx.w.ind[50:59])
+qx.d.dep
+```
+And then for withdrawals
+```{r}
+qx.w.dep <- c()
+qx.w.dep[50:59] <- qx.w.ind[50:59]*(1-0.5*qx.d.ind[50:59])
+qx.w.dep
+```
+## Double decrement table
+```{r}
+al.x <- c()
+al.x[50] <- 1000000
+```
+initialise $(ad)_x^d$ and $(ad)_x^w$
+```{r}
+ad.x.d <- c()
+ad.x.w <- c()
+
+for (j in 50:60) {
+  ad.x.d[j] <- al.x[j]*qx.d.dep[j]
+  ad.x.w[j] <- al.x[j]*qx.w.dep[j]
+  al.x[j+1] <- al.x[j]-ad.x.d[j]-ad.x.w[j]
+}
+al.x
+al.x[50:60]
+```
+
+this is probably a good time to pretty print the results
+```{r}
+# pretty
+```
+### Calculating the required policy values
+
+foo
+```{r}
+qx <- c()
+
+qx[50] <- 0.00478880
+qx[51] <- 0.00537740
+qx[52] <- 0.00603064
+qx[53] <- 0.00675456
+qx[54] <- 0.00755572
+qx[55] <- 0.00844128
+qx[56] <- 0.00941902
+qx[57] <- 0.01049742
+qx[58] <- 0.01168566
+qx[59] <- 0.01299373
+
+qx
+```
+and we need the life table corresponding to these $q_x$ values.
+```{r}
+lx <- c()
+
+lx[50] <- 100000
+
+dx <- c()
+
+for (j in 50:60) {
+  dx[j] <- lx[j]*qx[j]
+  lx[j+1] <- lx[j]-dx[j]
+}
+lx
+```
+to calculate policy values and surrender values we need the annuity-due term life annuity values on these two bases.
+```{r}
+a.due.PV <- c()
+a.due.SV <- c()
+
+px <- c()
+px[50:60] <- 1-qx[50:60]
+px
+```
+here are the life annuity due values on the policy value basis (i.e., $i$=4.25\%).
+```{r}
+a.due.PV[59] <- 1
+v <- 1/(1.0425)
+
+for (j in 59:51) {
+  a.due.PV[j-1] <- 1+v*px[j-1]*a.due.PV[j]
+}
+a.due.PV
+
+a.due.SV[59] <- 1
+v <- 1/1.09
+
+for (j in 59:51) {
+  a.due.SV[j-1] <- 1+v*px[j-1]*a.due.SV[j]
+}
+a.due.SV[60] <- 0
+a.due.SV
+```
+good! now we're in a position to do all our cash flow analysis!
+
+## In-force cash flows
+
+For this ten year endowment policy, we need the vectors of
+
+1. Premia
+2. Expenses
+3. Death benefits
+4. Withdrawal benefits
+5. Maturity benefits
+6. Policy values
+
+So, here goes. First, vector of premia
+```{r}
+prems.BoY <- c(rep(7600,10))
+prems.BoY
+```
+and expenses
+```{r}
+expenses.BoY <- c()
+expenses.BoY[1] <- 0.7*prems.BoY[1]+20
+expense.inflation <- 1.07^(1:9)
+expense.inflation
+expenses.BoY[2:10] <- 20*expense.inflation
+expenses.BoY
+```
+and death benefits
+```{r}
+death.EoY <- c(rep(100000,10))
+death.EoY
+```
+and maturity benefits
+```{r}
+maturity.EoY <- c(rep(0,10))
+maturity.EoY[10] <- 100000
+maturity.EoY
+```
+now we can do the complicated ones, the withdrawl benefit and the policy value. First, the withdrawal benefit, which is given on the surrender value basis ($i=$9%), using a net premium approach
+$$S\!V=S(1-\ddot{a}_{x+t\,:\,\overline{n-t}|}/\ddot{a}_{x\,:\,\overline{n}|})$$
+where $x=50$, $n=10$ and $t=1,\ldots,10$.
+```{r}
+wdrwl.EoY <- c()
+wdrwl.EoY[1] <- 0
+wdrwl.EoY[2:10] <- death.EoY[2:10]*(1-a.due.SV[52:60]/a.due.SV[50])
+wdrwl.EoY
+```
+and for the policy value we have
+```{r}
+policy.EoY <- death.EoY[1:9]*(1-a.due.PV[51:59]/a.due.PV[50])
+policy.EoY[10] <- 0
+policy.EoY
+```
+So, for an in-force policy, we know all the relevant cash flows. Hence, we're now able to move on to the expected case for a single sold policy.
+
+## Expected amounts per sold policy
+
+Here we need vectors of
+
+1. expected premium
+2. expected expenses
+3. expected withdrawal benefits
+4. expected maturity benefits
+5. expected interest earned
+6. expected policy value (to set aside)
+7. expected transfer (like profit)
+
+To get these expected values, the key will be to have ${}_t(ap)_x$. Lucky we have our double decrement table set up and ready and rearing to go! We nedd ${}_1(ap)_{50}$ to {}_10(ap)_{50}$.
+```{r}
+ap.x <- al.x[51:60]/al.x[50]
+ap.x
+```
+And so we can calculate the expected premium vector easily as
+```{r}
+Eprem.BoY <- c()
+Eprem.BoY[1] <- prems.BoY[1]
+Eprem.BoY[2:10] <- prems.BoY[2:10]*ap.x[1:9]
+Eprem.BoY
+```
+and expected expenses as
+```{r}
+Eexp.BoY <- c()
+Eexp.BoY[1] <- expenses.BoY[1]
+Eexp.BoY[2:10] <- expenses.BoY[2:10]*ap.x[1:9]
+Eexp.BoY
+```
+The expected maturity benefit paid also depends on survival of the purchaser of the single sold policy.
+```{r}
+Emat.EoY <- maturity.EoY*ap.x[1:10]
+Emat.EoY
+```
+
+Expected death benefits paid on one sold policy will require probabilities of death from our cohort of fifty-year olds ${}_t|(aq)^d_{50}$, for $t=0,\ldots,9$.
+```{r}
+aq.x.d <- ad.x.d[50:59]/al.x[50:59]
+Edeath.EoY <- death.EoY[1:10]*ad.x.d[50:59]/al.x[50]
+Edeath.EoY 
+```
+Expected withdrawal benefits paid on one sold policy will work similarly.
+
+```{r}
+Ewdrwl.EoY <- c()
+Ewdrwl.EoY <- wdrwl.EoY[1:10]*ad.x.w[50:59]/al.x[50]
+Ewdrwl.EoY
+```
+The funds generated by the single policy sold also have to set up reserves: that is, the policy value. This also depends on survivorship. So the expected policy values created from a single sold policy will also be generated by ${}_t(ap)_x$.
+```{r}
+Epolval.EoY <- policy.EoY*ap.x
+Epolval.EoY
+```
+
+The assets (net, at beginning of year) from this single sold policy will earn interest every year (at the earned rate). But that's only the annual cash inflow. There's also the policy value that's sitting around that's earning interest, too, for years 2 and beyond.
+```{r}
+i <- 0.08
+
+Einterest <- c()
+Einterest[1] <- (Eprem.BoY[1]-Eexp.BoY[1])*i
+Einterest[2:10] <- (Eprem.BoY[2:10]-Eexp.BoY[2:10]+Epolval.EoY[1:9])*i
+Einterest
+```
+So, now we can work out how much money we expect to make on this single sold policy. This last element is the expected transfer vector.
+```{r}
+EPolValChg <- c()
+EPolValChg[1] <- Epolval.EoY[1]
+EPolValChg[2:10] <- Epolval.EoY[2:10]-Epolval.EoY[1:9]
+EPolValChg
+ETransfer <-Eprem.BoY-Eexp.BoY-Edeath.EoY-Ewdrwl.EoY-Emat.EoY+Einterest-EPolValChg
+ETransfer
+```
+## Measures of profitability
+
+### Profit margin
+given by the present value of the profit signature divided by the PV of expected premiums.
+```{r}
+EPVPremsER <- sum(Eprem.BoY/(1+i)^(0:9))
+EPVPremsER
+EPVPremsOth <- sum(Eprem.BoY/(1+0.1)^(0:9))
+EPVPremsOth
+EPVTransfersER <- sum(ETransfer/(1+i)^(1:10))
+EPVTransfersOth <- sum(ETransfer/(1+0.1)^(1:10))
+EPVTransfersER
+EPVTransfersOth
+ProfMargER <- EPVTransfersER/EPVPremsER
+ProfMargER
+ProfMarOth <- EPVTransfersOth/EPVPremsOth
+ProfMarOth
+```
+
+### NPV of Transfers
+```{r}
+EPVTransfersER <- sum(ETransfer/(1+i)^(1:10))
+EPVTransfersOth <- sum(ETransfer/(1+0.1)^(1:10))
+EPVTransfersER
+EPVTransfersOth
+```
+
+### Yield on transfers
+```{r}
+yield <- 0.1274
+EPVTransfers <- ETransfer/(1+yield)^(1:10)
+EPVTransfers
+EPVoTransfers <- sum(EPVTransfers)
+EPVoTransfers
+```

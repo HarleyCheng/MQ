@@ -1,0 +1,190 @@
+---
+title: "Example 1"
+author: "sachi"
+date: "28/07/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Example 1
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this (here $x$ is the vector of ages we're working with):
+
+```{r}
+x <- c()
+x[20:30] <- c(20:30)
+x
+```
+
+### death rates
+
+$q_x^d=0.001+0.0001x$
+
+```{r}
+x
+qx_d_ind <- c()
+qx_d_ind[20:30]<-0.001+0.0001*x[20:30]
+qx_d_ind
+```
+
+### withdrawal rates (independent)
+
+$q_{[x]+r}^w = \max{(0.1,0.2-0.02r)}$
+
+```{r}
+qx_w_ind <- c()
+qx_w_ind[20:30] <- pmax(0.1,0.2-0.02*(x[20:30]-20))
+qx_w_ind
+```
+### calculate the dependent rates
+
+we can now calculate the multiple decrement table. first for deaths.
+```{r}
+qx.d.dep <- c()
+qx.d.dep[20:30] <- qx_d_ind[20:30]*(1-0.5*qx_w_ind[20:30])
+qx.d.dep
+```
+and then for withdrawals
+```{r}
+qx.w.dep <- c()
+qx.w.dep[20:30] <- qx_w_ind[20:30]*(1-0.5*qx_d_ind[20:30])
+qx.w.dep
+```
+## Multiple decrement table
+With the dependent rates available, we can now create a multiple decement table for decrements $d$ and $w$. We'll use a radix of 100\,000.
+```{r}
+al.x <- c()
+al.x[20] <- 100000
+```
+initialise $(ad)_x^d$ and $(ad)_x^w$
+```{r}
+ad.x.d <- c()
+ad.x.w <- c()
+
+al.x[21:30] <- al.x[20:29]*(1-qx.w.dep[20:29]-qx.d.dep[20:29])
+al.x
+```
+which doesn't work! have to abandon our vector approach temporarily and use a loop (often not a good idea in R)
+```{r}
+for (j in 20:30) {
+  ad.x.d[j] <- al.x[j]*qx.d.dep[j]
+  ad.x.w[j] <- al.x[j]*qx.w.dep[j]
+  al.x[j+1] <- al.x[j]-ad.x.d[j]-ad.x.w[j]
+}
+al.x
+al.x[20:30]
+```
+Great! Let's pretty print all the decrement details (like a spreadsheet!).
+```{r}
+pretty <- cbind(x[20:30],qx_d_ind[20:30])
+colnames(pretty) <- c("x",
+                    "qx_d_ind")
+pretty
+colnames(pretty) <- c("x[20:30]",
+                   "qx_d_ind[20:30]")
+pretty
+```
+## Premium adequacy
+
+Let's see if an annual premium of $1\,300.00 is adequate for this policy.
+```{r}
+prems.BoY <- c(rep(1300,10))
+prems.BoY
+```
+where the first premium is paid at age 20.
+
+### Expenses
+$E_1=115$ and $E_t=15(1.07)^{t-1}$ for $t=2,3,\ldots,10$.
+```{r}
+Exp.BoY <- c()
+Exp.BoY[1] <- 115
+t.base <- c(rep(1,10))
+t.series <- cumsum(t.base)
+t.series
+```
+or to get increasing integers
+```{r}
+foo <- 1:10
+foo
+foo <- (1:10)
+foo
+foo <- c(1:10)
+foo
+1:10
+```
+and back to our expenses
+```{r}
+Exp.BoY[2:10] <- 15*1.07^t.series[1:9]
+Exp.BoY
+```
+### Death benefits
+```{r}
+Death.EoY <- c(rep(20000,10))
+Death.EoY
+```
+### Withdrawal benefits
+```{r}
+Wdrwl.EoY <- t.series*prems.BoY
+Wdrwl.EoY
+```
+### Maturity benefits
+```{r}
+Mat.EoY <- c(rep(0,9),20000)
+Mat.EoY
+```
+## Expected cash flows per initial policy
+
+### Expected premium
+
+First, the expected premium amount we receive at the beginning of the year
+$EP_t=P_t\frac{(a\ell)_{20+t-1}}{(a\ell)_{20}}$
+```{r}
+Eprem.BoY <- prems.BoY*al.x[20:29]/al.x[20]
+Eprem.BoY
+```
+### Expected expenses
+$EE_t=E_t\frac{(a\ell)_{20+t-1}}{(a\ell)_{20}}$
+```{r}
+Eexp.BoY <- Exp.BoY*al.x[20:29]/al.x[20]
+Eexp.BoY
+```
+### Expected death benefits
+$ED\!B_t=D\!B_t\frac{(ad)^w_{20+t-1}}{(a\ell)_{20}}$
+```{r}
+Edeath.EoY <- Death.EoY*ad.x.d[20:29]/al.x[20]
+Edeath.EoY
+```
+### Expected withdrawal benefits
+$ED\!B_t=D\!B_t\frac{(ad)^w_{20+t-1}}{(a\ell)_{20}}$
+```{r}
+Ewdrwl.EoY <- Wdrwl.EoY*ad.x.w[20:29]/al.x[20]
+Ewdrwl.EoY
+```
+### Expected maturity benefits
+$EM\!B_t=M\!B_t\frac{(a\ell)_{20+t-1}}{(a\ell)_{20}}$
+```{r}
+Emat.EoY <- Mat.EoY*al.x[21:30]/al.x[20]
+Emat.EoY
+```
+### Working with expected cash flows
+```{r}
+int <- .08
+ECF.EoY <- (Eprem.BoY-Eexp.BoY)*(1+int)-Edeath.EoY-Ewdrwl.EoY-Emat.EoY
+ECF.EoY
+```
+### PV (profitable?)
+```{r}
+disc.vec <- 1/(1+int)^(1:10)
+disc.vec
+
+PV.at.ER <- disc.vec*ECF.EoY
+PV.at.ER
+sum(PV.at.ER)
+```
