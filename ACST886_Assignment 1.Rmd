@@ -1,0 +1,141 @@
+---
+title: "ACST886_Assignment1"
+author: "Chieh Cheng (44472587)"
+date: "August 21, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Q1
+Initial Setttings:  
+```{r}
+#Amount Borrrowed: 
+Loan<-600000
+#interest rate:
+i<-0.035
+#length of repayment:
+n<-30
+#First instalment is due on 19/03/2020
+
+```  
+Suppose the annual repayment is $x$. $a_n$ represents the annuity-immediate for n years.  
+$$x*a_{n} = Loan$$
+In order to use "uniroot", I define the objective function "Q1" based on the discounted cash flow equation: 
+```{r}
+Q1<-function(x){x*(1-(1/(1+i))^n)/i - Loan}
+(AnswerQ1<-uniroot(Q1,interval=c(0,Loan))$root)
+```
+
+
+##Q2
+###__(a)__
+Base on Questoin 1, if Scott wants to pay level repayments for this 30-year loan as well, he should pay around 32622.80 each year. However, now he sets up an interest offset account which will reduce original loan interest by $3500$:
+```{r}
+#Interest offset account balance:
+Offset_Acc<-100000
+#Interest offset account interest rate (p.a.):
+i_off<-0.035
+#Interest paid by offset account each year:
+(int_repay<-Offset_Acc * i_off)
+``` 
+Hence, The annual loan repayment(excluding int_repay) turns out to be the answer of Question 1 less 3500:
+```{r}
+(AnswerQ2<-AnswerQ1 - int_repay)
+``` 
+###__(b)__
+Now if Scott would like to pay as much as Bill and also create an offset account, then he can paid all loan outstanding for less than 30 years.  
+I will write a function to calculate the new loan term:
+```{r}
+TERM<-function(x,L,i1,A,i2){
+  #The five inputs are the annual repayment(x), initia loan amount(L), loan interest rate (i1), interest offset account balance(A), and interest rate of the offset account(i2).
+  term<-0
+  balance<-L
+  int_repay<-A*i2    #copied Q1's code: interest paid by offset account.
+  while(balance>0){
+    balance<-balance*(1+i1) - x - int_repay
+    term<-term+1
+  }
+  return(term)
+}
+TERM(AnswerQ1,600000,0.035,100000,0.035)
+```   
+The new loan term is 26! Now calculate the last repayment amount. This amount should be not less than 0, and not greater than AnswerQ1 (the original annual repaid amount).
+```{r}
+LAST_PAYMENT<-function(x,L,i1,A,i2){
+  #The five inputs are the annual repayment(x), initia loan amount(L), loan interest rate (i1), interest offset account balance(A), and interest rate of the offset account(i2).
+  balance<-L
+  int_repay<-A*i2    #copied Q1's code: interest paid by offset account.
+  while(balance>0){
+    balance<-balance*(1+i1) - x - int_repay
+  }
+  last<-x-(-balance)
+  return(last)
+}
+LAST_PAYMENT(AnswerQ1,600000,0.035,100000,0.035)
+```  
+Use the LAST_PAYMENT function, the last repayment amout is 7853.068. Note that in reality we have to round interests and payments to cents. Despite of that, the answer is still close to the reality and it is between 0 and 32622.8. That is a reasonable last repayment.  
+
+##Q3
+###__(a)__  
+Compute the NPV of Theresa's total commission at 19/03/2019 with valuation rate 3.5% p.a.. The level commission payments start from 19/03/2020 to 19/03/2049. The NPV can thus be written as $\$ 1000 \ *\ a_{30}$.  
+```{r}
+i=0.035;v<-1/(1+i)
+(AnswerQ3a<-1000 * (1-v^30)/i)
+```
+
+###__(b)__  
+Total amount of Bill's loan:
+```{r}
+options(digits=8)
+(Tot_Bill<-600000 + AnswerQ3a)
+```
+This is the present value of the bank's cash outflows at 19/03/2019. We've already calculate the present value of cash inflows at the same date is exactly $600,000 = 32622.799... * a_{30}$ with interest rate 3.5%. However, with this rate the PV of inflow and outflow are unequal.  
+
+To make this mortgage business break even, the effective IRR should be lower than 3.5%. Numerically, when the interest is set below 3.5%, both PV(inflow) and PV(outflow) will raise due to the increase of  $a_{30}$. However, 32622.8 > 1000 indicates that PV(inflow) will catch up with PV(outflow).  
+
+Intuitively, this means that the effective IRR of the bank is __lower__ than 3.5%, which is used to charge their customers. This makes sense though, since small part of the annual repayment needs to transfer to the broker immediately. The remaining inflows require higher interest rate(3.5%) than the effective rate. 
+
+
+###__(c)__  
+Analyze the annual cash inflow and outflow amount from the bank's point of view: 
+```{r}
+#Record from 19/03/2019 to 19/03/2049
+Inflow<-c(0,rep(AnswerQ1,30))  #use the exact number for annual repayment
+Outflow<-c(600000,rep(1000,30))
+NPV<-function(rate){
+  l<-length(Inflow)
+  disc_vector<-1/(1+rate)^(0:(l-1))
+  pv<-sum(Inflow*disc_vector)-Tot_Bill #Tot_Bill is from part(a)
+  return(pv)
+}
+# Based on my guess in part(a), set the searching interval c(0,0.035)
+# The root is the IRR of the bank with respect to this business.
+uniroot(NPV,interval = c(0,0.035))
+```
+The effective interest rate is thus __3.26%__ approximately.   
+(Remark: Based on the description of the question, assume that the valuation rate for Theresa's commission doesn't change.)   
+
+###__(d)__ 
+Suppose his adjusted annual payment is $y when the rate 3.26% is offered.
+The trick here is the same as Q1:  
+```{r}
+Q3<-function(x){x*(1-(1/(1+0.0326))^30)/0.0326 - 600000}
+(New_repay<-uniroot(Q3,interval=c(0,Loan))$root)
+(AnswerQ3d<-New_repay - AnswerQ1)
+```  
+The new annual instalment becomes $31649.27 approximately which decreases
+around __$973.53__.  
+(Remark: Assume the interest rate for Bill is EXACTLY 3.26%.)    
+
+##Q4
+Install the package "lubridate" to help count dates:  
+```{r}
+library(lubridate)
+Birth<-c(ymd("19650516"),ymd("19220301"),ymd("19420921"))
+Issued<-c(ymd("19850721"),ymd("19550923"),ymd("19670602"))
+Death<-c(ymd("19940622"),ymd("19930721"),ymd("19960429"))
+Interval<-interval(Birth[1],Death[1])
+as.period(Interval)
+```
