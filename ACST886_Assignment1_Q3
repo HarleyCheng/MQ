@@ -1,0 +1,52 @@
+##Q3
+###__(a)__  
+Compute the NPV of Theresa's total commission at 19/03/2019 with valuation rate 3.5% p.a.. The level commission payments start from 19/03/2020 to 19/03/2049. The NPV can thus be written as $\$ 1000 \ *\ a_{30}$.  
+```{r}
+i=0.035;v<-1/(1+i)
+(AnswerQ3a<-1000 * (1-v^30)/i)
+```
+
+###__(b)__  
+Total amount of Bill's loan:
+```{r}
+options(digits=8)
+(Tot_Bill<-600000 + AnswerQ3a)
+```
+This is the present value of the bank's cash outflows at 19/03/2019. We've already calculate the present value of cash inflows at the same date is exactly $600,000 = 32622.799... * a_{30}$ with interest rate 3.5%. However, with this rate the PV of inflow and outflow are unequal.  
+
+To make this mortgage business break even, the effective IRR should be lower than 3.5%. Numerically, when the interest is set below 3.5%, both PV(inflow) and PV(outflow) will raise due to the increase of  $a_{30}$. However, 32622.8 > 1000 indicates that PV(inflow) will catch up with PV(outflow).  
+
+Intuitively, this means that the effective rate of the bank is __lower__ than 3.5%, which is used to charge their customers. This makes sense though, since small part of the annual repayment needs to transfer to the broker immediately. The remaining inflows require higher interest rate(3.5%) than the effective rate. 
+
+
+###__(c)__  
+Analyze the annual cash inflow and outflow amount from the bank's point of view: 
+```{r}
+#Record from 19/03/2019 to 19/03/2049
+Inflow<-c(0,rep(AnswerQ1,30))  #use the exact number for annual repayment
+Outflow<-c(600000,rep(1000,30))
+NPV<-function(rate){
+  l<-length(Inflow)
+  disc_vector<-1/(1+rate)^(0:(l-1))
+  pv<-sum(Inflow*disc_vector)-Tot_Bill #Tot_Bill is from the last chunck.
+  return(pv)
+}
+# Based on my guess in part(a), set the searching interval c(0,0.035)
+# The root is the effective rate of the bank with respect to this business.
+uniroot(NPV,interval = c(0,0.035))
+```  
+
+The effective interest rate is thus __3.26%__ approximately.   
+(Remark: Based on the description of the question, assume that the valuation rate for Theresa's commission doesn't change.)   
+
+###__(d)__ 
+Suppose his adjusted annual payment is $y when the rate 3.26% is offered.
+The trick here is the same as Q1:  
+```{r}
+Q3<-function(x){x*(1-(1/(1+0.0326))^30)/0.0326 - 600000}
+(New_repay<-uniroot(Q3,interval=c(0,Loan))$root)
+(AnswerQ3d<-New_repay - AnswerQ1)
+```  
+The new annual instalment becomes $31649.27 approximately which decreases
+around $ 32622.80 - 31649.27 = $ __$973.53__.  
+(Remark: Assume the interest rate for Bill is EXACTLY 3.26%.)    
