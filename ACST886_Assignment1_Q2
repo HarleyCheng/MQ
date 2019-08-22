@@ -1,0 +1,54 @@
+##Q2
+###__(a)__
+Base on Question 1, if Scott wants to pay level repayments for this 30-year loan as well, he should pay around 32622.80 each year. However, now he sets up an interest offset account which will increase the total annual repayment by $3500$:
+```{r}
+#Interest offset account balance:
+Offset_Acc<-100000
+#Interest offset account interest rate (p.a.):
+i_off<-0.035
+#Interest paid by offset account each year:
+(int_repay<-Offset_Acc * i_off)
+``` 
+
+However,the annual loan repayment(excluding int_repay) turns out to be the same as the answer of Question 1:
+```{r}
+(AnswerQ2a<-AnswerQ1)
+``` 
+###__(b)__
+Now Scott total annual repayment equals to 32622.8 plus the interest produced by the offset account. Therefore he can paid all loan outstanding for less than 30 years. Furthermore, when the loan balance less than 100,000 if we follow the same instalment amount, we should use the whole offset account amount with its annual interest to repay first. The rest of the loan outstanding will be the money I should take out from my wallet. 
+I will write a function to calculate the new loan term:
+```{r}
+TERM<-function(x,L,i1,A,i2){
+  #The five inputs are the annual repayment(x), initia loan amount(L), loan interest rate (i1), interest offset account balance(A), and interest rate of the offset account(i2).
+  term<-0
+  balance<-L #600000
+  int_repay<-A*i2  #3500  #copied Q1's code: interest paid by offset account.
+  while(balance>100000){
+    balance<-balance*(1+i1) - x - int_repay
+    term<-term+1
+  }
+  return(term)
+}
+TERM(AnswerQ2a,600000,0.035,100000,0.035)
+```   
+
+The new loan term is 23! Now calculate the last repayment amount. This amount should be not less than 0, and not greater than AnswerQ1 (the original annual repaid amount).  
+I create a function called "LAST_PAYMENT" to find the last payment:  
+```{r}
+LAST_PAYMENT<-function(x,L,i1,A,i2){
+  #The five inputs are the annual repayment(x), initia loan amount(L), loan interest rate (i1), interest offset account balance(A), and interest rate of the offset account(i2).
+  balance<-L
+  int_repay<-A*i2    #copied Q1's code: interest paid by offset account.
+  while(balance>100000){
+    balance<-balance*(1+i1) - x - int_repay
+  }
+  #the variable balance now will be the wrong one since it follows the original instalment amount. Now reverse the calculate to find the loan outstanding at the beginning of the 23th year, and then substracts the offset account balance & its 23th interest from the beginning loan balance. The remaining amount will be the last payment.
+  correct_balance<-(balance + x + int_repay)/(1+i1)
+  last<-correct_balance*(1+i1) - 100000 - int_repay
+  return(last)
+}
+LAST_PAYMENT(AnswerQ1,600000,0.035,100000,0.035)
+```  
+Use the LAST_PAYMENT function, the last repayment amout is __11484.89__. Note that it is between 0 and 32622.8. That is a reasonable last repayment.  
+Remark: This amount excludes the 23th interest repayment offset account. 
+
