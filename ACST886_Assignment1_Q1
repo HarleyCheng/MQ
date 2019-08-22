@@ -1,0 +1,30 @@
+---
+title: "ACST886_Assignment1"
+author: "Chieh Cheng (44472587)"
+date: "August 21, 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Q1
+Initial Setttings:  
+```{r}
+#Amount Borrrowed: 
+Loan<-600000
+#interest rate:
+i<-0.035
+#length of repayment:
+n<-30
+#First instalment is due on 19/03/2020
+
+```  
+Suppose the annual repayment is $x$. $a_n$ represents the annuity-immediate for n years.  
+$$x*a_{n} = Loan$$
+In order to use "uniroot", I define the objective function "Q1" based on the discounted cash flow equation: 
+```{r}
+Q1<-function(x){x*(1-(1/(1+i))^n)/i - Loan}
+(AnswerQ1<-uniroot(Q1,interval=c(0,Loan))$root)
