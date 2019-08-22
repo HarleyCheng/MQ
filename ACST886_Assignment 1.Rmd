@@ -2,7 +2,9 @@
 title: "ACST886_Assignment1"
 author: "Chieh Cheng (44472587)"
 date: "August 21, 2019"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -31,7 +33,7 @@ Q1<-function(x){x*(1-(1/(1+i))^n)/i - Loan}
 
 ##Q2
 ###__(a)__
-Base on Question 1, if Scott wants to pay level repayments for this 30-year loan as well, he should pay around 32622.80 each year. However, now he sets up an interest offset account which will reduce original loan interest by $3500$:
+Base on Question 1, if Scott wants to pay level repayments for this 30-year loan as well, he should pay around 32622.80 each year. However, now he sets up an interest offset account which will increase the total annual repayment by $3500$:
 ```{r}
 #Interest offset account balance:
 Offset_Acc<-100000
@@ -40,12 +42,12 @@ i_off<-0.035
 #Interest paid by offset account each year:
 (int_repay<-Offset_Acc * i_off)
 ``` 
-Hence, The annual loan repayment(excluding int_repay) turns out to be the same as the answer of Question 1:
+However,the annual loan repayment(excluding int_repay) turns out to be the same as the answer of Question 1:
 ```{r}
 (AnswerQ2a<-AnswerQ1)
 ``` 
 ###__(b)__
-Now if Scott would like to pay as much as Bill and also create an offset account, then he can paid all loan outstanding for less than 30 years.  
+Now Scott total annual repayment equals to 32622.8 plus the interest produced by the offset account. Therefore he can paid all loan outstanding for less than 30 years. Furthermore, when the loan balance less than 100,000 if we follow the same instalment amount, we should use the whole offset account amount with its annual interest to repay first. The rest of the loan outstanding will be the money I should take out from my wallet. 
 I will write a function to calculate the new loan term:
 ```{r}
 TERM<-function(x,L,i1,A,i2){
@@ -61,7 +63,8 @@ TERM<-function(x,L,i1,A,i2){
 }
 TERM(AnswerQ2a,600000,0.035,100000,0.035)
 ```   
-The new loan term is 23! Now calculate the last repayment amount. This amount should be not less than 0, and not greater than AnswerQ1 (the original annual repaid amount).
+The new loan term is 23! Now calculate the last repayment amount. This amount should be not less than 0, and not greater than AnswerQ1 (the original annual repaid amount).  
+I create a function called "LAST_PAYMENT" to find the last payment:  
 ```{r}
 LAST_PAYMENT<-function(x,L,i1,A,i2){
   #The five inputs are the annual repayment(x), initia loan amount(L), loan interest rate (i1), interest offset account balance(A), and interest rate of the offset account(i2).
@@ -70,12 +73,15 @@ LAST_PAYMENT<-function(x,L,i1,A,i2){
   while(balance>100000){
     balance<-balance*(1+i1) - x - int_repay
   }
-  last<-balance + x - 100000
+  #the variable balance now will be the wrong one since it follows the original instalment amount. Now reverse the calculate to find the loan outstanding at the beginning of the 23th year, and then substracts the offset account balance & its 23th interest from the beginning loan balance. The remaining amount will be the last payment.
+  correct_balance<-(balance + x + int_repay)/(1+i1)
+  last<-correct_balance*(1+i1) - 100000 - int_repay
   return(last)
 }
 LAST_PAYMENT(AnswerQ1,600000,0.035,100000,0.035)
 ```  
-Use the LAST_PAYMENT function, the last repayment amout is 7853.068. Note that in reality we have to round interests and payments to cents. Despite of that, the answer is still close to the reality and it is between 0 and 32622.8. That is a reasonable last repayment.  
+Use the LAST_PAYMENT function, the last repayment amout is __11484.89__. Note that it is between 0 and 32622.8. That is a reasonable last repayment.  
+Remark: This amount excludes the 23th interest repayment offset account. 
 
 ##Q3
 ###__(a)__  
@@ -95,7 +101,7 @@ This is the present value of the bank's cash outflows at 19/03/2019. We've alrea
 
 To make this mortgage business break even, the effective IRR should be lower than 3.5%. Numerically, when the interest is set below 3.5%, both PV(inflow) and PV(outflow) will raise due to the increase of  $a_{30}$. However, 32622.8 > 1000 indicates that PV(inflow) will catch up with PV(outflow).  
 
-Intuitively, this means that the effective IRR of the bank is __lower__ than 3.5%, which is used to charge their customers. This makes sense though, since small part of the annual repayment needs to transfer to the broker immediately. The remaining inflows require higher interest rate(3.5%) than the effective rate. 
+Intuitively, this means that the effective rate of the bank is __lower__ than 3.5%, which is used to charge their customers. This makes sense though, since small part of the annual repayment needs to transfer to the broker immediately. The remaining inflows require higher interest rate(3.5%) than the effective rate. 
 
 
 ###__(c)__  
@@ -107,11 +113,11 @@ Outflow<-c(600000,rep(1000,30))
 NPV<-function(rate){
   l<-length(Inflow)
   disc_vector<-1/(1+rate)^(0:(l-1))
-  pv<-sum(Inflow*disc_vector)-Tot_Bill #Tot_Bill is from part(a)
+  pv<-sum(Inflow*disc_vector)-Tot_Bill #Tot_Bill is from the last chunck.
   return(pv)
 }
 # Based on my guess in part(a), set the searching interval c(0,0.035)
-# The root is the IRR of the bank with respect to this business.
+# The root is the effective rate of the bank with respect to this business.
 uniroot(NPV,interval = c(0,0.035))
 ```
 The effective interest rate is thus __3.26%__ approximately.   
@@ -126,7 +132,7 @@ Q3<-function(x){x*(1-(1/(1+0.0326))^30)/0.0326 - 600000}
 (AnswerQ3d<-New_repay - AnswerQ1)
 ```  
 The new annual instalment becomes $31649.27 approximately which decreases
-around __$973.53__.  
+around $ 32622.80 - 31649.27 = $ __$973.53__.  
 (Remark: Assume the interest rate for Bill is EXACTLY 3.26%.)    
 
 ##Q4
@@ -136,40 +142,53 @@ library(lubridate)
 Birth<-c(ymd("19650516"),ymd("19220301"),ymd("19420921"))
 Issued<-c(ymd("19850721"),ymd("19550923"),ymd("19670602"))
 Death<-c(ymd("19940622"),ymd("19930721"),ymd("19960429"))
-# Function SPAN calculates the time difference between data1 & date2
+# Function SPAN calculates the time difference between date1 & date2
 SPAN<-function(date1, date2){
   Interval<-interval(date1, date2)
   return(as.period(Interval))
 }
 ```  
 ###__a. Age next birthday at death__  
+This is calculated by taking the year component of the difference between Birth date and Death date (i.e. age last birthday), and plus 1.
 ```{r}
 (Age_a<-SPAN(Birth[1:3],Death[1:3])$year + 1)
 ```  
-###__b. Age last birthday at 1 January preceding death__  
+###__b. Age last birthday at 1 January preceding death__    
+Since it is age last birthday, simply calculate the time difference between birth date and 01/01/(year of death).
 ```{r}
 Record_death<-c(ymd(paste0(as.character(year(Death[1:3])),"0101")))
 (Age_b<-SPAN(Birth[1:3],Record_death[1:3]))$year
 ```  
 ###__c. Age at the birthday in the policy year of death__  
+First step: Find the end date of the policy interval including date of death.  
+Second step: Calculate the difference between that end date and the Birthday. Adjust 1 year if necessary.  
 ```{r}
 Policy_y<-SPAN(Issued[1:3],Death[1:3])$year
+#change the Issued month number to a 2-character strings:
+#Example: 7 => "07", 12 =>"12"
 Policy_m<-c()
 for(i in 1:3){
   Policy_m[i]<-ifelse(nchar(as.character(month(Issued[i])))==1,
                  paste0("0",as.character(month(Issued[i]))),
                  as.character(month(Issued[i])))
 }
+
+#change the Issued day number to a 2-character strings:
+#Example: 7 => "07", 12 =>"12"
 Policy_d<-c()
 for(i in 1:3){
   Policy_d[i]<-ifelse(nchar(as.character(day(Issued[i])))==1,
                  paste0("0",as.character(day(Issued[i]))),
                  as.character(day(Issued[i])))
 }
+
+#Show the end date of the policy year including the date of death
 Policy_interval_end<-ymd(paste0(
                  as.character(year(Issued)+Policy_y[1:3]+1),
                  Policy_m,
                  Policy_d))
+
+#Find the answer. This depends on the difference of the policy interval end and the Birth date.
 AnswerQ4c<-c()
 for(i in 1:3){
   AnswerQ4c[i]<-ifelse(SPAN(Birth[i],Policy_interval_end[i])$year==
@@ -177,7 +196,12 @@ for(i in 1:3){
                       year(Policy_interval_end[i])-year(Birth[i]),
                       year(Policy_interval_end[i])-year(Birth[i])-1)
 }
-
-                  
+AnswerQ4c
+```  
+The answers are summarized below, correspondingly:  
+(answer for part a. is in the first column, etc)
+```{r}
+matrix(c(30,72,54,
+         28,70,53,
+         29,71,53), nrow = 3)
 ```
-
