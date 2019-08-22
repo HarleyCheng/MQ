@@ -1,0 +1,70 @@
+##Q4
+Install the package "lubridate" to help count dates:  
+```{r}
+library(lubridate)
+Birth<-c(ymd("19650516"),ymd("19220301"),ymd("19420921"))
+Issued<-c(ymd("19850721"),ymd("19550923"),ymd("19670602"))
+Death<-c(ymd("19940622"),ymd("19930721"),ymd("19960429"))
+# Function SPAN calculates the time difference between date1 & date2
+SPAN<-function(date1, date2){
+  Interval<-interval(date1, date2)
+  return(as.period(Interval))
+}
+```  
+###__a. Age next birthday at death__  
+This is calculated by taking the year component of the difference between Birth date and Death date (i.e. age last birthday), and plus 1.
+```{r}
+(Age_a<-SPAN(Birth[1:3],Death[1:3])$year + 1)
+```  
+###__b. Age last birthday at 1 January preceding death__    
+Since it is age last birthday, simply calculate the time difference between birth date and 01/01/(year of death).
+```{r}
+Record_death<-c(ymd(paste0(as.character(year(Death[1:3])),"0101")))
+(Age_b<-SPAN(Birth[1:3],Record_death[1:3]))$year
+```  
+###__c. Age at the birthday in the policy year of death__  
+First step: Find the end date of the policy interval including date of death.  
+Second step: Calculate the difference between that end date and the Birthday. Adjust 1 year if necessary.  
+```{r}
+Policy_y<-SPAN(Issued[1:3],Death[1:3])$year
+#change the Issued month number to a 2-character strings:
+#Example: 7 => "07", 12 =>"12"
+Policy_m<-c()
+for(i in 1:3){
+  Policy_m[i]<-ifelse(nchar(as.character(month(Issued[i])))==1,
+                 paste0("0",as.character(month(Issued[i]))),
+                 as.character(month(Issued[i])))
+}
+
+#change the Issued day number to a 2-character strings:
+#Example: 7 => "07", 12 =>"12"
+Policy_d<-c()
+for(i in 1:3){
+  Policy_d[i]<-ifelse(nchar(as.character(day(Issued[i])))==1,
+                 paste0("0",as.character(day(Issued[i]))),
+                 as.character(day(Issued[i])))
+}
+
+#Show the end date of the policy year including the date of death
+Policy_interval_end<-ymd(paste0(
+                 as.character(year(Issued)+Policy_y[1:3]+1),
+                 Policy_m,
+                 Policy_d))
+
+#Find the answer. This depends on the difference of the policy interval end and the Birth date.
+AnswerQ4c<-c()
+for(i in 1:3){
+  AnswerQ4c[i]<-ifelse(SPAN(Birth[i],Policy_interval_end[i])$year==
+                      year(Policy_interval_end[i])-year(Birth[i]),
+                      year(Policy_interval_end[i])-year(Birth[i]),
+                      year(Policy_interval_end[i])-year(Birth[i])-1)
+}
+AnswerQ4c
+```  
+The answers are summarized below, correspondingly:  
+(answer for part a. is in the first column, etc)
+```{r}
+matrix(c(30,72,54,
+         28,70,53,
+         29,71,53), nrow = 3)
+```  
