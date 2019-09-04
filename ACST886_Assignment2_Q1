@@ -1,0 +1,88 @@
+---
+title: "ACST886_Assignment2"
+author: "Chieh Cheng"
+date: "September 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Q1
+__Step 1: Insuring age__  
+_Method:_ Define a vector "Age_ins" for the insuring age. Create a new numeric vector "temp" for storing dates of latest birthday just before policies issued. Suppose they are the Xth birthday of each individual. If time span between "temp" and policy issued date is greater than 182 days (i.e.half years), then the insuring age for that individual should be X+1, otherwise X it is.  
+```{r}
+library(lubridate)
+num_Birth <- c(19640317,19640506,19640812,
+               19641027,19650104,19650418,
+               19650520,19650704,19650916,19651211)
+num_Issued <- c(19920620,19920806,19921218,
+                19930104,19930428,19930616,
+                19931029,19940216,19940822,19950306)
+num_Death <- c(NA,19930612,NA,NA,19960829,
+               NA,19960421,NA,NA,19970217)
+num_Withdrawal <- c(NA,NA,19950618,NA,NA,
+                     19951212,NA,NA,19970222,NA)
+Birth<-ymd(num_Birth)
+Issued<-ymd(num_Issued)
+Death<-ymd(num_Death)
+Withdrawal<-ymd(num_Withdrawal)
+
+# Function SPAN calculates the time difference between date1 & date2
+SPAN<-function(date1, date2){
+  Interval<-interval(date1, date2)
+  return(as.period(Interval))
+}
+
+#temp stores the dates of birthday just before the policy issued date:
+temp <- num_Birth + SPAN(Birth,Issued)$year*10000
+Age_ins<-c()   #Stores the "insuring age"
+for(i in 1:10){Age_ins[i]<-ifelse(difftime(Issued[i],ymd(temp[i]))>182,
+                                  SPAN(Birth,Issued)$year[i]+1, SPAN(Birth,Issued)$year[i])}
+M<-matrix(Age_ins);colnames(M)<-"Age_ins"
+as.table(M)  
+```  
+  
+__Step 2: Withdrawal age (calendar insuring age)__   
+_Method:_ Create vecter "Age_W", "Year_W", "Year_B" for withdrawal age, calendar year of withdrawal, and valuation year of birth, then  
+$$Age\_W = Year\_W - Year\_B$$  
+```{r}
+Year_W<-year(Withdrawal)
+Year_B<-year(Issued)-Age_ins
+Age_W<-Year_W - Year_B
+M<-matrix(Age_W);colnames(M)<-"Age_W"
+as.table(M)  
+```  
+
+__Step 3: Calculate $E_{30}$__  
+__Method:__ Find Data A and Date B mentioned in the week 2 lecture notes.    
+Date A is the latest of the date reaching age label 30, the start of the overall investigation, and the date of entry into the population.  
+Date B is the earliest of the date reaching age label 31, the end of the overall investigation, and the date of exit from the population for whatever the reason.  
+```{r}
+Date_A<-pmax(num_Issued+(30-Age_ins)*10000,
+             1993*10000+month(Issued)*100+day(Issued),
+             num_Issued)
+Date_A[which(Date_A>num_Death)]<-NA
+
+Date_B<-pmin(num_Issued+(31-Age_ins)*10000,
+             1998*10000+month(Issued)*100+day(Issued))
+for(i in 1:10){
+  if(is.na(Data_A[i])){
+    Data_B[i]<-NA
+  } else if(!is.na(num_Death[i]) && num_Death[i]>Date_A[i] && num_Death[i]<Date_A[i]+1*10000){
+    Date_B[i] <- num_Death[i]
+  }
+}
+Date_B[which(Age_W==30)] <- num_Withdrawal[which(Age_W==30)]
+
+```
+__Step 4: Estimate $q_{30}$ __  
+__Step 5: Find $d_{30}$ __  
+__Step 6: Calculate $E^{c}_{30}$ __  
+__Step 7: Estimate $q_{30}$ by assuming CFM__  
+
+
+
+
+
