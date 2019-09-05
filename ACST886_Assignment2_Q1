@@ -1,5 +1,5 @@
 ---
-title: "ACST886_Assignment2"
+title: "ACST886_Assignment2_Q1"
 author: "Chieh Cheng"
 date: "September 3, 2019"
 output: html_document
@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ##Q1
+There are 3 possible estimates for $q_{30}$.
+###Part 1: Estimate $q_{30}$ without assuming Binomial or Poisson:  
 __Step 1: Insuring age__  
 _Method:_ Define a vector "Age_ins" for the insuring age. Create a new numeric vector "temp" for storing dates of latest birthday just before policies issued. Suppose they are the Xth birthday of each individual. If time span between "temp" and policy issued date is greater than 182 days (i.e.half years), then the insuring age for that individual should be X+1, otherwise X it is.  
 ```{r}
@@ -55,13 +57,12 @@ M<-matrix(Age_W);colnames(M)<-"Age_W"
 as.table(M)  
 ```  
 
-__Step 3: Calculate $E_{30}$ & $E^{c}_{30}$__  
+__Step 3: Calculate $E_{30}$ __  
 __Method:__ 3-1: Find Data A and Date B mentioned in the week 2 lecture notes.    
 Date A is the latest of the date reaching age label 30, the start of the overall investigation, and the date of entry into the population.  
 Date B is the earliest of the date reaching age label 31, the end of the overall investigation, and the date of exit from the population for whatever the reason.  
   
-Also, I create a indicator vector "Indicator_d30". If the individual died in insuring age 30, the value is 1. Otherwise it is zero.
-Therefore, if Indicator_d30[i]==1, the contribution for E30 of that person should be a whole year. However, I still store the date of death in "Date_B" in this case due to the later calulation for central exposed to risk.
+Also, I create a indicator vector "Indicator_d30". If the individual died in insuring age 30, the value is 1. Otherwise it is zero. It will be used when I build the likelihood function.
 
 ```{r}
 Indicator_d30 <- rep(0,10)
@@ -69,7 +70,7 @@ Indicator_d30 <- rep(0,10)
 Date_A<-pmax(num_Issued+(30-Age_ins)*10000,
              1993*10000+month(Issued)*100+day(Issued),
              num_Issued)
-# If the above Date_A candidate is after the death date, then Date_A doesn't exist for that individual.
+# If the above Date_A is after the death date, then Date_A doesn't exist for that individual: 
 Date_A[which(Date_A>num_Death)]<-NA
 ####################################################################
 Date_B<-pmin(num_Issued+(31-Age_ins)*10000,
@@ -79,12 +80,12 @@ Date_B<-pmin(num_Issued+(31-Age_ins)*10000,
 for(i in 1:10){
   if(is.na(Date_A[i])){
     Date_B[i]<-NA
-  } else if(!is.na(num_Death[i]) && num_Death[i]>Date_A[i] && num_Death[i]<Date_A[i]+1*10000){
+  }else if(!is.na(num_Death[i]) && num_Death[i]>Date_A[i] && num_Death[i]<Date_A[i]+1*10000){
   Date_B[i] <- num_Death[i]
   Indicator_d30[i] <- 1    #The person died in the insuring age 30
   }
 }
-Date_B[which(Age_W==30)] <- num_Withdrawal[which(Age_W==30)]
+Date_B[which(Age_W==30)] <- Date_A[which(Age_W==30)]
 #Summarize Date_A & Date_B
 M<-matrix(c(Date_A,Date_B),ncol = 2);colnames(M)<-c("Date_A","Date_B")
 as.table(M)
@@ -95,14 +96,14 @@ E_x<-rep(0,10)
 for(i in 1:10){
   if(is.na(Date_A[i])){
     E_x[i] <- 0
-  }else if(Indicator_d30[i]==1){
-    E_x[i] <- 1
   }else{
     E_x[i] <- as.numeric(difftime(ymd(Date_B[i]),ymd(Date_A[i])))/365.25
-    if(Date_B[i]-Date_A[i]==10000){E_x[i] <- 1}
+    #avoid 365 & 366 problem: Assume E_x[i] to be 1 rather than 365/365.25
+    if(Date_B[i]-Date_A[i]==10000){E_x[i] <- 1} 
   }
 }
-E_x
+M<-matrix(E_x,ncol=1);colnames(M)<-"E_x";as.table(M)
+####################################################################
 OBJ<-function(q){
   obj<-1
   for(i in 1:10){
@@ -116,39 +117,27 @@ OBJ<-function(q){
 }
 nlminb(start = 0.5,objective = OBJ,lower=0)
 ```   
+__Part 1 Conclusion: __  
+The $q_{30}$ estimate is around __0.2585__.  
 
-Hence $E_{30}$ is calculated as following:  
-Note that $E_{30} = E^{c}_{30} + \Sigma(death\ date\ to\ the\ end\ of\ insuring\ age\ 30)$
+###Part 2: Under Binomial Model:  
+Simply find d30 and Initial Exposed to Risk vector "Ex_binom".
+_Method:_ From Part 1, d30 here equals to the number of non-zero-or-one values in E_x. Also, set all those non-zero-or-one values to 1 and then sum over whole E_x, we obtain intial exposed to risk.  
+```{r}
+d30<-length(which(!((E_x==1)|(E_x==0)))) 
+Ex_binom<-E_x
+Ex_binom[which(!((E_x==1)|(E_x==0)))]=1
+q30_binom<-d30/sum(Ex_binom)
+```  
+__Part 2 Conclusion: __  
+the $q_{30}$ estimate under Binomial Model is exactly __0.25__. 
   
+###Part 3: Under Poisson Model:  
+If we treat the last line of the question as Poisson Model settings, then we have to calculate central exposed to risk vector "Ex_Poisson". Fortunately, this is exactly the vector"E_x".
 ```{r}
-Ec30 <- as.numeric(sum(difftime(ymd(Date_B[!is.na(Date_B)]),ymd(Date_A[!is.na(Date_A)])))/365.25)
-E30 <- Ec30
-for(i in 1:10){
-  if(Indicator_d30[i]==1){
-    E30 = E30 + as.numeric(difftime(ymd(Date_A[i]+1*10000),ymd(Date_B[i]))/365.25)
-  }
-}
-#Result: Ec30 & E30
-M<-matrix(c(Ec30,E30),ncol = 2);colnames(M)<-c("Ec30", "E30");rownames(M)<-" "  
-as.table(M)  
-```  
-
-__Step 4: Find $d_{30}$ __  
-```{r}
-d30 <- sum(Indicator_d30)
-```
-__Step 5: Estimate $q_{30}$ __  
-```{r}
-q30 <- d30/E30
-```
-
-__Step 7: Estimate $q_{30}$ by assuming constant force of mortality__  
-```{r}
-mu30<-d30/Ec30
-MLE_q30 = 1-exp(-mu30)
-#compare q30 with MLE_q30
-M<-matrix(c(q30,MLE_q30), ncol = 2)   
-colnames(M)<-c("q30","MLE_q30");rownames(M)<-" "
-as.table(M)
-```  
-Since we apply Balducci & constant rate of mortality respectively, the estimates are slightly different.  
+Ex_Poisson <- E_x
+mu_Poisson <- d30/sum(Ex_Poisson)
+q30 <- 1 - exp(-mu_Poisson) 
+``` 
+_Part 3 Conclusion:_   
+Under Poisson model, the $\mu$ estimate is about 0.2691103 and the $q_{30}$ estimate is around 0.23594.  
