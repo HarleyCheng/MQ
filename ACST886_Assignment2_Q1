@@ -38,8 +38,8 @@ SPAN<-function(date1, date2){
 #temp stores the dates of birthday just before the policy issued date:
 temp <- num_Birth + SPAN(Birth,Issued)$year*10000
 Age_ins<-c()   #Stores the "insuring age"
-for(i in 1:10){Age_ins[i]<-ifelse(difftime(Issued[i],ymd(temp[i]))>182,
-                                  SPAN(Birth,Issued)$year[i]+1, SPAN(Birth,Issued)$year[i])}
+for(i in 1:10){Age_ins[i]<-ifelse(difftime(Issued[i],ymd(temp[i]))>182,                                     SPAN(Birth,Issued)$year[i]+1,
+                                  SPAN(Birth,Issued)$year[i])}
 M<-matrix(Age_ins);colnames(M)<-"Age_ins"
 as.table(M)  
 ```  
@@ -55,34 +55,100 @@ M<-matrix(Age_W);colnames(M)<-"Age_W"
 as.table(M)  
 ```  
 
-__Step 3: Calculate $E_{30}$__  
-__Method:__ Find Data A and Date B mentioned in the week 2 lecture notes.    
+__Step 3: Calculate $E_{30}$ & $E^{c}_{30}$__  
+__Method:__ 3-1: Find Data A and Date B mentioned in the week 2 lecture notes.    
 Date A is the latest of the date reaching age label 30, the start of the overall investigation, and the date of entry into the population.  
 Date B is the earliest of the date reaching age label 31, the end of the overall investigation, and the date of exit from the population for whatever the reason.  
+  
+Also, I create a indicator vector "Indicator_d30". If the individual died in insuring age 30, the value is 1. Otherwise it is zero.
+Therefore, if Indicator_d30[i]==1, the contribution for E30 of that person should be a whole year. However, I still store the date of death in "Date_B" in this case due to the later calulation for central exposed to risk.
+
 ```{r}
+Indicator_d30 <- rep(0,10)
+####################################################
 Date_A<-pmax(num_Issued+(30-Age_ins)*10000,
              1993*10000+month(Issued)*100+day(Issued),
              num_Issued)
+# If the above Date_A candidate is after the death date, then Date_A doesn't exist for that individual.
 Date_A[which(Date_A>num_Death)]<-NA
-
+####################################################################
 Date_B<-pmin(num_Issued+(31-Age_ins)*10000,
              1998*10000+month(Issued)*100+day(Issued))
+#1. If there is no Date_A for that person, then Date_B should be marked as NA as well.
+#2. Adjust Date_B if the date of exit for death or withdrawal is the earliest.
 for(i in 1:10){
-  if(is.na(Data_A[i])){
-    Data_B[i]<-NA
+  if(is.na(Date_A[i])){
+    Date_B[i]<-NA
   } else if(!is.na(num_Death[i]) && num_Death[i]>Date_A[i] && num_Death[i]<Date_A[i]+1*10000){
-    Date_B[i] <- num_Death[i]
+  Date_B[i] <- num_Death[i]
+  Indicator_d30[i] <- 1    #The person died in the insuring age 30
   }
 }
 Date_B[which(Age_W==30)] <- num_Withdrawal[which(Age_W==30)]
+#Summarize Date_A & Date_B
+M<-matrix(c(Date_A,Date_B),ncol = 2);colnames(M)<-c("Date_A","Date_B")
+as.table(M)
+```  
+  
+```{r}
+E_x<-rep(0,10)
+for(i in 1:10){
+  if(is.na(Date_A[i])){
+    E_x[i] <- 0
+  }else if(Indicator_d30[i]==1){
+    E_x[i] <- 1
+  }else{
+    E_x[i] <- as.numeric(difftime(ymd(Date_B[i]),ymd(Date_A[i])))/365.25
+    if(Date_B[i]-Date_A[i]==10000){E_x[i] <- 1}
+  }
+}
+E_x
+OBJ<-function(q){
+  obj<-1
+  for(i in 1:10){
+    if(Indicator_d30[i]==1){
+      obj<-obj*(1-(1-q)^E_x[i])
+    }else{
+      obj<-obj*(1-q)^E_x[i]
+    }
+  }
+  return(-obj)
+}
+nlminb(start = 0.5,objective = OBJ,lower=0)
+```   
 
+Hence $E_{30}$ is calculated as following:  
+Note that $E_{30} = E^{c}_{30} + \Sigma(death\ date\ to\ the\ end\ of\ insuring\ age\ 30)$
+  
+```{r}
+Ec30 <- as.numeric(sum(difftime(ymd(Date_B[!is.na(Date_B)]),ymd(Date_A[!is.na(Date_A)])))/365.25)
+E30 <- Ec30
+for(i in 1:10){
+  if(Indicator_d30[i]==1){
+    E30 = E30 + as.numeric(difftime(ymd(Date_A[i]+1*10000),ymd(Date_B[i]))/365.25)
+  }
+}
+#Result: Ec30 & E30
+M<-matrix(c(Ec30,E30),ncol = 2);colnames(M)<-c("Ec30", "E30");rownames(M)<-" "  
+as.table(M)  
+```  
+
+__Step 4: Find $d_{30}$ __  
+```{r}
+d30 <- sum(Indicator_d30)
 ```
-__Step 4: Estimate $q_{30}$ __  
-__Step 5: Find $d_{30}$ __  
-__Step 6: Calculate $E^{c}_{30}$ __  
-__Step 7: Estimate $q_{30}$ by assuming CFM__  
+__Step 5: Estimate $q_{30}$ __  
+```{r}
+q30 <- d30/E30
+```
 
-
-
-
-
+__Step 7: Estimate $q_{30}$ by assuming constant force of mortality__  
+```{r}
+mu30<-d30/Ec30
+MLE_q30 = 1-exp(-mu30)
+#compare q30 with MLE_q30
+M<-matrix(c(q30,MLE_q30), ncol = 2)   
+colnames(M)<-c("q30","MLE_q30");rownames(M)<-" "
+as.table(M)
+```  
+Since we apply Balducci & constant rate of mortality respectively, the estimates are slightly different.  
