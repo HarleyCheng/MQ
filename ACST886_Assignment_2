@@ -1,5 +1,5 @@
 ---
-title: "ACST886_Assignment2_Q1"
+title: "ACST886_Assignment2"
 author: "Chieh Cheng"
 date: "September 3, 2019"
 output: html_document
@@ -10,8 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ##Q1
-There are 3 possible estimates for $q_{30}$.
-###Part 1: Estimate $q_{30}$ without assuming Binomial or Poisson:  
+There are 3 possible estimates for $q_{30}$.  
+
+###Part 1: Estimate $q_{30}$ without assuming Binomial or Poisson:   
 __Step 1: Insuring age__  
 _Method:_ Define a vector "Age_ins" for the insuring age. Create a new numeric vector "temp" for storing dates of latest birthday just before policies issued. Suppose they are the Xth birthday of each individual. If time span between "temp" and policy issued date is greater than 182 days (i.e.half years), then the insuring age for that individual should be X+1, otherwise X it is.  
 ```{r}
@@ -40,8 +41,7 @@ SPAN<-function(date1, date2){
 #temp stores the dates of birthday just before the policy issued date:
 temp <- num_Birth + SPAN(Birth,Issued)$year*10000
 Age_ins<-c()   #Stores the "insuring age"
-for(i in 1:10){Age_ins[i]<-ifelse(difftime(Issued[i],ymd(temp[i]))>182,                                    
-                                  SPAN(Birth,Issued)$year[i]+1,
+for(i in 1:10){Age_ins[i]<-ifelse(difftime(Issued[i],ymd(temp[i]))>182,                                     SPAN(Birth,Issued)$year[i]+1,
                                   SPAN(Birth,Issued)$year[i])}
 M<-matrix(Age_ins);colnames(M)<-"Age_ins"
 as.table(M)  
@@ -166,6 +166,7 @@ ggplot()+
   geom_point(data = data.frame(Age,qx),mapping = aes(x=Age,y=qx))+
   geom_line(data = data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx))
 ```    
+  
 __Observation: __ Since there are only 11 data points, the smoothness needs to be checked. Also, there are larger differences between actual data and graduated data in the age groups above 80.
   
 __Step 2: Check Smoothness __
@@ -177,13 +178,15 @@ Smoothness<-ifelse(abs(diff_3)*7^3<grad_qx[1:length(diff_3)],"GOOD","BAD")
 #bad! 
 ```  
 __Step 2 Conclusion: __ This graduated curve isn't smooth in the sense of the third difference.  
+  
 __Step 3 Chi_Square Test: __
 ```{r}
 T_Chi_Square <- sum(zx^2)
 Critical_Chi_Square <- qchisq(0.95,11:5)
 ```   
-__Step 3 Conclusion: __ As long as the number of parameters estimated is less than or equal to 11-6=5, then we have insufficient evidence to reject H0. In other words, the adherence of the graduated data is accepted.  
-
+__Step 3 Conclusion: __   
+As long as the number of parameters estimated is less than or equal to 11-6=5, then we have insufficient evidence to reject H0. In other words, the adherence of the graduated data is accepted.  
+  
 __Step 4 Standardised Deviation Test: __
 ```{r}
 #Divided zx into 4 groups: (-Inf,-1),(-1,0),(0,1),(1,Inf)
@@ -195,20 +198,26 @@ for(i in 1:4){
 }
 T_Stand_Dev <- sum((A-E)^2/E) 
 Critial_Stand_Dev<-qchisq(0.95,4-1)
-#since test statistic is 2.45 which is less than the critical value, the adherence of the graduation is good.
 ```  
-Cumulative Deviation Test:
+__Step 4 Conclusion: __  
+Since test statistic is 2.45 which is less than the critical value, the adherence of the graduation is good.  
+  
+__Step 5 Cumulative Deviation Test: __
 ```{r}
 T_Cumulativ_Dev <- sum(dx-Exqx)/sqrt(sum(var_dx))
-#Since the absolute value of the test statistic is less then 1.96, the adherence of the graduated data is good.
 ```  
-Sign Test:
+__Step 5 Conclusion: __   
+Since the absolute value of the test statistic is less then 1.96, the adherence of the graduated data is good.  
+  
+__Step 6 Sign Test: __
 ```{r}
 T_sign <- sum(zx>0)
 k<-qbinom(0.025,length(zx),0.5)
-# Since T=6 is between k=2 and length(zx)-k=9, the adherence of adherence is good.
 ```  
-Grouping of sign test:
+__Step 6 Conclusion: __  
+Since T=6 is between k=2 and length(zx)-k=9, the adherence of adherence is good.  
+  
+__Step 7 Grouping of sign test: __  
 ```{r}
 T_Group_Sign<-0
 for(i in 2:length(zx)){
@@ -222,19 +231,22 @@ while(obj<0.05){
   j=j+1
 }
 Critical_Group_Sign=j
-# Since T=7 is greater then the critical value 3, the adherence of the graduated data is good.
-```  
-Serial Correlation Test
+```   
+__Step 7 Conclusion: __
+Since T=7 is greater then the critical value 3, the adherence of the graduated data is good.  
+  
+__Step 8 Serial Correlation Test: __
 ```{r}
 zbar_1<-mean(zx[1:(length(zx)-1)])
 zbar_2<-mean(zx[2:length(zx)])
 corr_serial<-sum((zx[1:(length(zx)-1)]-zbar_1)*(zx[2:length(zx)]-zbar_2))/sqrt(sum((zx[1:(length(zx)-1)]-zbar_1)^2)*sum((zx[2:length(zx)]-zbar_2)^2))
 T_Serial_Corr <- (corr_serial - 0)/sqrt(1/(length(zx)-1))
-#Since the absolute value of test statistic is less then 1.64, we conclude that the adherence graduated data is good.
 ```  
-
+__Step 8 Conclusion: __  
+Since the absolute value of test statistic is less then 1.64, we conclude that the adherence graduated data is good.  
+  
 ##Q3
-5.7
+###5.7  
 ```{r}
 Age<-70:75
 Ecx<-c(1000,1005,1010,1008,1006,998)
@@ -244,21 +256,25 @@ mux<-dx/Ecx
 OBJ<-function(para){
   -sum(log(exp(-Ecx*para[1]*para[2]^Age)*(Ecx*para[1]*para[2]^Age)^dx/factorial(dx)))
 }
-OBJ1<-function(para){
-  abs(sum(-Ecx*para[2]^Age + dx/para[1]))+abs(sum(-Ecx*para[1]*Age*para[2]^(Age-1)+Age*dx/para[2]))
-}
+########################################################
+#If use the score equation as objective functions, results are the same
+#OBJ1<-function(para){
+#  abs(sum(-Ecx*para[2]^Age + #dx/para[1]))+abs(sum(-Ecx*para[1]*Age*para[2]^(Age-1)+Age*dx/para[2]))
+#}
+#########################################################
 #Find appropriate intial estimates for B & C:
 mod_ini <- lm(log(mux)~Age,data = data.frame(mux,Age)) 
 Ini_est <- c(exp(mod_ini$coefficients[1]),exp(mod_ini$coefficients[2])) 
 MLE<-nlm(OBJ,Ini_est)$estimate
 grad_mux<-MLE[1]*MLE[2]^Age
+#plot
 library(ggplot2)
 ggplot()+
   geom_point(data=data.frame(Age,mux),mapping = aes(x=Age,y=mux))+
   geom_smooth(data=data.frame(Age,grad_mux),mapping = aes(x=Age,y=grad_mux))
 ```   
 
-5.8  
+###5.8  
 ```{r}
 Age <- 30:49
 Ex <- c(70000,66672,68375,65420,61779,66091,68514,69560,65000,66279,67300,65368,65391,62917,66537,62302,62145,63856,61097,61110)
@@ -279,7 +295,7 @@ ggplot()+
   geom_smooth(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx))
 ```  
   
-5.9
+###5.9
 ```{r}
 Age <- 47:67
 Ex <- c(166,187,218,243,276,302,347,390,430,494,558,628,701,813,917,1040,1182,1299,1432,1596,1752)
@@ -298,7 +314,15 @@ ggplot()+
   geom_point(data=data.frame(Age,qx),mapping = aes(x=Age,y=qx))+
   geom_point(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx),color="red")+
   geom_smooth(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx))
-```
+```  
+  
+__Conclusion__:   
+After adjusting the steptol parameter in nlm(), 5.8 and 5.9 results are the same as the solutions on ilearn.   
+However in 5.7, the non linear estimation doesn't achieve the better answer as solution provided. (I've even other optimization function in R such as nlminb() & optim(), as well as adjusting the steptol and stepmax parameter in those functions).  
+  
+The reason might be the complexity of our objective function. Even in Excel file, the answer provided isn't the optimal one if we find that the first score function isn't close to 0.  
+  
+However the graph we obtained is almost overlapped with the one in the solution file. Hence, I will say the linear regression estimates are appropriate in this case. 
 
 
 
