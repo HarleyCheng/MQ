@@ -1,5 +1,16 @@
+---
+title: "ACST886_Assignment2_Q1"
+author: "Chieh Cheng"
+date: "September 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 ##Q3
-5.7
+###5.7  
 ```{r}
 Age<-70:75
 Ecx<-c(1000,1005,1010,1008,1006,998)
@@ -9,21 +20,25 @@ mux<-dx/Ecx
 OBJ<-function(para){
   -sum(log(exp(-Ecx*para[1]*para[2]^Age)*(Ecx*para[1]*para[2]^Age)^dx/factorial(dx)))
 }
-OBJ1<-function(para){
-  abs(sum(-Ecx*para[2]^Age + dx/para[1]))+abs(sum(-Ecx*para[1]*Age*para[2]^(Age-1)+Age*dx/para[2]))
-}
+########################################################
+#If use the score equation as objective functions, results are the same
+#OBJ1<-function(para){
+#  abs(sum(-Ecx*para[2]^Age + #dx/para[1]))+abs(sum(-Ecx*para[1]*Age*para[2]^(Age-1)+Age*dx/para[2]))
+#}
+#########################################################
 #Find appropriate intial estimates for B & C:
 mod_ini <- lm(log(mux)~Age,data = data.frame(mux,Age)) 
 Ini_est <- c(exp(mod_ini$coefficients[1]),exp(mod_ini$coefficients[2])) 
 MLE<-nlm(OBJ,Ini_est)$estimate
 grad_mux<-MLE[1]*MLE[2]^Age
+#plot
 library(ggplot2)
 ggplot()+
   geom_point(data=data.frame(Age,mux),mapping = aes(x=Age,y=mux))+
   geom_smooth(data=data.frame(Age,grad_mux),mapping = aes(x=Age,y=grad_mux))
 ```   
-  
-5.8  
+
+###5.8  
 ```{r}
 Age <- 30:49
 Ex <- c(70000,66672,68375,65420,61779,66091,68514,69560,65000,66279,67300,65368,65391,62917,66537,62302,62145,63856,61097,61110)
@@ -44,7 +59,7 @@ ggplot()+
   geom_smooth(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx))
 ```  
   
-5.9
+###5.9
 ```{r}
 Age <- 47:67
 Ex <- c(166,187,218,243,276,302,347,390,430,494,558,628,701,813,917,1040,1182,1299,1432,1596,1752)
@@ -63,4 +78,15 @@ ggplot()+
   geom_point(data=data.frame(Age,qx),mapping = aes(x=Age,y=qx))+
   geom_point(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx),color="red")+
   geom_smooth(data=data.frame(Age,grad_qx),mapping = aes(x=Age,y=grad_qx))
-```
+```  
+  
+__Conclusion__:   
+After adjusting the steptol parameter in nlm(), 5.8 and 5.9 results are the same as the solutions on ilearn.   
+However in 5.7, the non linear estimation doesn't achieve the better answer as solution provided. (I've even other optimization function in R such as nlminb() & optim(), as well as adjusting the steptol and stepmax parameter in those functions).  
+  
+The reason might be the complexity of our objective function. Even in Excel file, the answer provided isn't the optimal one if we find that the first score function isn't close to 0.  
+  
+However the graph we obtained is almost overlapped with the one in the solution file. Hence, I will say the linear regression estimates are appropriate in this case. 
+
+
+
