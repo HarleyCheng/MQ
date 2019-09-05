@@ -57,8 +57,8 @@ M<-matrix(Age_W);colnames(M)<-"Age_W"
 as.table(M)  
 ```  
 
-__Step 3: Calculate $E_{30}$ __  
-__Method:__ 3-1: Find Data A and Date B mentioned in the week 2 lecture notes.    
+__Step 3: Calculate exposed to risk vector "E_x" __  
+__Method:__ __3.1 Find Data A and Date B mentioned in the week 2 lecture notes.__    
 Date A is the latest of the date reaching age label 30, the start of the overall investigation, and the date of entry into the population.  
 Date B is the earliest of the date reaching age label 31, the end of the overall investigation, and the date of exit from the population for whatever the reason.  
   
@@ -90,7 +90,7 @@ Date_B[which(Age_W==30)] <- Date_A[which(Age_W==30)]
 M<-matrix(c(Date_A,Date_B),ncol = 2);colnames(M)<-c("Date_A","Date_B")
 as.table(M)
 ```  
-  
+__3.2 Find "E_x" based on Date_A & Date_B __    
 ```{r}
 E_x<-rep(0,10)
 for(i in 1:10){
@@ -103,7 +103,9 @@ for(i in 1:10){
   }
 }
 M<-matrix(E_x,ncol=1);colnames(M)<-"E_x";as.table(M)
-####################################################################
+```  
+__Step 4: Find MLE of $q_{30}$ under constant force of mortality __  
+```{r}
 OBJ<-function(q){
   obj<-1
   for(i in 1:10){
@@ -139,5 +141,5 @@ Ex_Poisson <- E_x
 mu_Poisson <- d30/sum(Ex_Poisson)
 q30 <- 1 - exp(-mu_Poisson) 
 ``` 
-_Part 3 Conclusion:_   
+__Part 3 Conclusion:__   
 Under Poisson model, the $\mu$ estimate is about 0.2691103 and the $q_{30}$ estimate is around 0.23594.  
