@@ -1,0 +1,116 @@
+---
+title: "ACST886_Assignment 3"
+author: "Chieh Cheng"
+date: "October 2, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Question 1 
+Contruct a profit testing table for this term annuity (conventional business).
+Step 1: Input Setting
+```{r}
+T=3
+Annuity<-c()
+Annuity[1:3]<-15000*(1+0.0192308)^(0:2)
+q<-c()
+q[55:57]<-c(0.001046,0.001199,0.001375)
+p<-1-q
+tp55<-c()
+tp55[1:3]<-c(p[55],p[55]*p[56],p[55]*p[56]*p[57])
+Premium<-c(40250,0,0)
+Ini_Expense<-c(100,0,0)+0.015*Premium
+Pay_Expense<-10*(1+0.05)^(1:3)
+Earn_i<-0.08
+rdr<-0.12
+A56_3<-0.889132 ; A57_2<-0.924607
+j<-(1+0.06)/(1+0.0192308)-1 ; j=0.04
+d<-j/(1+j)
+PV<-rep(0,3)
+PV[1]<-Annuity[1]*((1-A56_3)/d-1)
+PV[2]<-Annuity[2]*((1-A57_2)/d-1)
+#Mortality Info
+print("Mortality Table")
+M<-matrix(c(q[55:57],tp55[1:3]),nrow = 3);colnames(M)<-c("q55~q57","1p55~3p55");M
+print("Possible Cash Flow Table")
+#CF Table
+M<-matrix(c(1:3,55:57,Premium,Ini_Expense,Pay_Expense,Annuity,PV),nrow = 3)
+colnames(M)<-c("Year t", "Age", "Premium", "Initial Expense", "Annuity Payment Expense", 
+               "Annuity Payment", "Policy Value")
+M
+#ECF Table
+EPremium<-Premium*c(1,tp55[1:2])
+EIni_Expense<-Ini_Expense*c(1,tp55[1:2])
+EPay_Expense<-Pay_Expense*tp55
+EAnnuity<-Annuity*tp55
+EPV<-PV*tp55 #Expected Policy Value
+Interest<-(c(0,EPV[1:2])+EPremium-EIni_Expense)*Earn_i
+Change_EPV<-EPV-c(0,EPV[1:2])
+ETransfer<-EPremium-EIni_Expense-EPay_Expense-EAnnuity+Interest-Change_EPV
+
+print("Expected Cash Flow Table")
+M<-matrix(c(EPremium,EIni_Expense,EPay_Expense,EAnnuity,EPV,Interest,ETransfer),nrow = 3)
+colnames(M)<-c("EPremium","EIni_Expense","EPay_Expense","EAnnuity","EPV","Interest","ETransfer")
+M
+```  
+__(a)(i)__  
+The profit signature vector is in the "Etransfer" column above.  
+__(a)(ii)__  
+Net present value of the profit signature: (Using rdr = 12%)
+```{r}
+v<-1/(1+rdr)
+(aii_1<-sum(c(v,v^2,v^3)*ETransfer))
+```  
+Profit Margin: (Using rdr = 12%)
+```{r}
+(aii_2<-aii_1/(sum(c(1,v,v^2)*EPremium)))
+```  
+  
+__(b)__  
+IRR: The estimated IRR is shown below, which is 50.0.167% roughly. The reason why it is so high is due to 
+```{r}
+i=0 ; profit_signature<-ETransfer
+NPV<-function(i,profit_signature){
+  n<-length(profit_signature)
+  v<-(1+i)^-1
+  npv<-sum(v^(1:n) * profit_signature)
+  return(npv)
+}
+f<-function(i){NPV(i,ETransfer)}
+(IRR<-uniroot(NPV(i,ETransfer),c(0,1))$root)
+```  
+  
+##Question2
+Contruct a profit testing table for this unit-linked unbundled policy with no insurance.  
+  
+__Step 1:__ Initial Settings
+```{r}
+Premium<-5000
+Unit_Earn_rate<-0.1 ;  NonUnit_Earn_rate<-0.8
+Prem_Fee_rate1<-0.45 ; Prem_Fee_rate2<-0.01
+BS_rate<-0.005
+Asset_Fee_rate<-0.003
+Ini_Expense_rate<-0.45
+Maint_Expense<-58*(1+0.20)^0:9
+#Non-unit Fund fees & Expenses
+```  
+  
+__Step 2:__ Double Decrement Table
+```{r}
+qd<-c(0.00043,0.00042,0.00041,0.00040,0.00041,0.00042,0.00043,0.00045,0.00049,0.00053)
+
+```    
+  
+  
+
+
+
+
+
+
+
+
+
