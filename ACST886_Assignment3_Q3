@@ -1,0 +1,137 @@
+---
+title: "ACST886 Assign3 Q3"
+author: "Chieh Cheng"
+date: "October 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Question3  
+__Step 0: Find Yield on Transfer based on Question2 (a)__  
+Re-run the all chuncks before Q2(a) first!
+```{r}
+
+Premium<-5000
+Unit_Earn_rate<-0.1 ;  NonUnit_Earn_rate<-0.08
+Prem_Fee_rate1<-0.45 ; Prem_Fee_rate2<-0.01
+BS_rate<-0.005
+Asset_Fee_rate<-0.003
+Ini_Expense_rate<-0.45
+Maint_Expense<-58*(1+0.20)^(0:9)
+#Non-unit Fund fees & Expenses
+qd<-c(0.00043,0.00042,0.00041,0.00040,0.00041,0.00042,0.00043,0.00045,0.00049,0.00053,NA)
+qw<-rep(0.15,11);qw[1:3]<-c(0.25,0.20,0.175);qw[10]<-1;qw[11]<-NA
+#Assume withdrawal & death are uniformly distributed within each year.
+aq_d<-qd*(1-0.5*qw)
+aq_w<-qw*(1-0.5*qd)
+#Set al[1] = 100,000, which is (al)_30
+#for loop for (al), (ad)d, (ad)w: (from 30~40)
+al<-rep(0,11);al[1]<-100000
+ad_d<-rep(0,11);ad_w<-rep(0,11)
+for(i in 1:10){
+  ad_d[i] <- al[i]*aq_d[i]
+  ad_w[i] <- al[i]*aq_w[i]
+  al[i+1]<-al[i]-ad_d[i]-ad_w[i]
+}
+ad_d[11]<-NA;ad_w[11]<-NA
+########### For an In-force Policy ###########
+Inv_Prem<-Premium*(1-c(Prem_Fee_rate1,rep(Prem_Fee_rate2,9)))*(1-BS_rate)
+#Value of Units
+Value_Units<-c()
+Value_Units[1]<-Inv_Prem[1] * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+for(i in 2:10){
+  Value_Units[i]<-(Value_Units[i-1]+Inv_Prem[i]) * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+}
+########## Expect Amounts per Initial Policy ##########
+EInv_Prem<-Inv_Prem * al[1:10]/al[1]
+EValue_Units<-Value_Units * al[2:11]/al[1]
+EInterest_Unit<-(c(0,EValue_Units[1:9])+EInv_Prem)*Unit_Earn_rate
+Change_EValue_Units<-c(EValue_Units[1],EValue_Units[2:10]-EValue_Units[1:9])
+ETransfer_to_NonUnit<-EInv_Prem + EInterest_Unit - Change_EValue_Units
+
+########### For an In-force Policy ###########
+Prem_Fee<-c(Premium*Prem_Fee_rate1,Premium*rep(Prem_Fee_rate2,9))
+BS_Margins<-(Premium-Prem_Fee) * BS_rate
+Expenses<-c(Premium*Ini_Expense_rate, rep(0,9)) + Maint_Expense
+Death_Surr_Bft<-Value_Units
+########## Expect Amounts per Initial Policy ##########
+EPrem_Fee<-Prem_Fee * al[1:10]/al[1]
+EBS_Margins<-BS_Margins * al[1:10]/al[1]
+EExpenses<-Expenses * al[1:10]/al[1]
+EInterest_NonUnit<-(EPrem_Fee + EBS_Margins - EExpenses) * NonUnit_Earn_rate
+ETransfer_from_Unit<-ETransfer_to_NonUnit
+EDeath_Bft<-Death_Surr_Bft * ad_d[1:10]/al[1]
+ESurr_Bft<-Death_Surr_Bft * ad_w[1:10]/al[1]
+ETransfer<-EPrem_Fee + EBS_Margins - EExpenses + EInterest_NonUnit + ETransfer_from_Unit - EDeath_Bft - ESurr_Bft
+
+
+
+#################### End of Previous code ####################
+NPV_func<-function(i){
+  v<-1/(1+i)
+  NPV<-sum(v^(1:10) * ETransfer)
+  return(NPV)
+}
+(irr<-uniroot(NPV_func,c(0,1))$root)    
+```  
+The yield on tranfers of Question 2(a) is around __47.38%__.   
+   
+   
+Yearly renewal term insurance is then introduced in the model:   
+__Step 1: Revise Input Settings__
+```{r}
+SumInsured<-20000
+mortality_multiplier<-1.20
+Maint_Expense<-75*(1+0.25)^(0:9)
+```  
+__Step 2: Revised the model from Question2 part(a)__
+```{r}
+Insur_Charges<-SumInsured * qd[1:10] * mortality_multiplier
+
+########## Unit Fund: In-force Policy ##########
+#Renew Invested Premium: (Simplified model mention in P.12 of the lecture note.)
+Inv_Prem<-Premium*(1-c(Prem_Fee_rate1,rep(Prem_Fee_rate2,9)))*(1-BS_rate)-Insur_Charges
+#Renew Value of Units:
+Value_Units[1]<-Inv_Prem[1] * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+for(i in 2:10){
+  Value_Units[i]<-(Value_Units[i-1]+Inv_Prem[i]) * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+}
+########## Non-Unit Fund: In-force Policy ##########
+Insur_Charges<-SumInsured * qd[1:10] * mortality_multiplier
+Expenses<-c(Premium*Ini_Expense_rate, rep(0,9)) + Maint_Expense
+Death_Bft<-Value_Units + SumInsured
+Surr_Bft<-Value_Units
+
+
+########## Unit Fund: Expect Amounts per Initial Policy ##########
+EInv_Prem<-Inv_Prem * al[1:10]/al[1]
+EValue_Units<-Value_Units * al[2:11]/al[1]
+EInterest_Unit<-(c(0,EValue_Units[1:9])+EInv_Prem)*Unit_Earn_rate
+Change_EValue_Units<-c(EValue_Units[1],EValue_Units[2:10]-EValue_Units[1:9])
+ETransfer_to_NonUnit<-EInv_Prem + EInterest_Unit - Change_EValue_Units
+
+########## Non-Unit Fund: Expect Amounts per Initial Policy ##########
+EInsur_Charges<-Insur_Charges * al[1:10]/al[1]
+EExpenses<-Expenses * al[1:10]/al[1]
+EInterest_NonUnit<-(EPrem_Fee + EBS_Margins + EInsur_Charges - EExpenses) * NonUnit_Earn_rate
+ETransfer_from_Unit<-ETransfer_to_NonUnit
+EDeath_Bft<-Death_Bft * ad_d[1:10]/al[1]
+ESurr_Bft<-Surr_Bft * ad_w[1:10]/al[1]
+ETransfer<-EPrem_Fee + EBS_Margins + EInsur_Charges - EExpenses + EInterest_NonUnit + ETransfer_from_Unit - EDeath_Bft - ESurr_Bft
+
+```  
+__Step 3: Calculate the new yield on transfers__  
+```{r}
+print(ETransfer)
+NPV_func<-function(i){
+  v<-1/(1+i)
+  NPV<-sum(v^(1:10) * ETransfer)
+}
+(irr<-uniroot(NPV_func,c(-2,2),tol = .Machine$double.eps)$root)   
+```  
+  
+So the new yield on transfers is around __-192.4066%__.  
+Compare with the oringal yield 47%. Including an additional term insurance with the charges and expenses charges is unprofitable. 
