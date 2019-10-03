@@ -69,7 +69,8 @@ Profit Margin: (Using rdr = 12%)
 ```  
   
 __(b)__  
-IRR: The estimated IRR is shown below, which is 50.0167% roughly. The reason why it is so high is due to the parttern of the profit signature. In order to offset, 
+IRR: The estimated IRR is shown below, which is 50.0167% roughly. The reason why it is so high is due to the pattern of the profit signature. In order to make those bigger positive subsequent transfers worth the same as the abolute value of first year positive transfer, we should obtain heavy discount rate.  
+  
 ```{r}
 i=0 ; profit_signature<-ETransfer
 NPV<-function(i,profit_signature){
