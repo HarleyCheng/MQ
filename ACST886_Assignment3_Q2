@@ -1,0 +1,140 @@
+---
+title: "ACST886 Assign3 Q2"
+author: "Chieh Cheng"
+date: "October 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Question2
+Contruct a profit testing table for this unit-linked unbundled policy with no insurance.  
+  
+__Step 1: Initial Settings__
+```{r}
+Premium<-5000
+Unit_Earn_rate<-0.1 ;  NonUnit_Earn_rate<-0.08
+Prem_Fee_rate1<-0.45 ; Prem_Fee_rate2<-0.01
+BS_rate<-0.005
+Asset_Fee_rate<-0.003
+Ini_Expense_rate<-0.45
+Maint_Expense<-58*(1+0.20)^(0:9)
+#Non-unit Fund fees & Expenses
+```  
+  
+__Step 2: Double Decrement Table__
+```{r}
+qd<-c(0.00043,0.00042,0.00041,0.00040,0.00041,0.00042,0.00043,0.00045,0.00049,0.00053,NA)
+qw<-rep(0.15,11);qw[1:3]<-c(0.25,0.20,0.175);qw[10]<-1;qw[11]<-NA
+#Assume withdrawal & death are uniformly distributed within each year.
+aq_d<-qd*(1-0.5*qw)
+aq_w<-qw*(1-0.5*qd)
+#Set al[1] = 100,000, which is (al)_30
+#for loop for (al), (ad)d, (ad)w: (from 30~40)
+al<-rep(0,11);al[1]<-100000
+ad_d<-rep(0,11);ad_w<-rep(0,11)
+for(i in 1:10){
+  ad_d[i] <- al[i]*aq_d[i]
+  ad_w[i] <- al[i]*aq_w[i]
+  al[i+1]<-al[i]-ad_d[i]-ad_w[i]
+}
+ad_d[11]<-NA;ad_w[11]<-NA
+#Mortality Info
+print("Mortality Table")
+M<-matrix(c(30:40,qd,qw,aq_d,aq_w,al,ad_d,ad_w),nrow=11);colnames(M)<-c("Age","qd","qw","aq_d","aq_w","al","ad_d","ad_w");print(M,digits = 5)
+```    
+  
+__Step 3: Unit Fund __  
+This includes 
+```{r}
+########### For an In-force Policy ###########
+Inv_Prem<-Premium*(1-c(Prem_Fee_rate1,rep(Prem_Fee_rate2,9)))*(1-BS_rate)
+#Value of Units
+Value_Units<-c()
+Value_Units[1]<-Inv_Prem[1] * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+for(i in 2:10){
+  Value_Units[i]<-(Value_Units[i-1]+Inv_Prem[i]) * (1+Unit_Earn_rate) *  (1-Asset_Fee_rate)
+}
+########## Expect Amounts per Initial Policy ##########
+EInv_Prem<-Inv_Prem * al[1:10]/al[1]
+EValue_Units<-Value_Units * al[2:11]/al[1]
+EInterest_Unit<-(c(0,EValue_Units[1:9])+EInv_Prem)*Unit_Earn_rate
+Change_EValue_Units<-c(EValue_Units[1],EValue_Units[2:10]-EValue_Units[1:9])
+ETransfer_to_NonUnit<-EInv_Prem + EInterest_Unit - Change_EValue_Units
+
+print("Unit Fund Table")
+M<-matrix(c(1:10,Inv_Prem,Value_Units,EInv_Prem,EValue_Units,EInterest_Unit,ETransfer_to_NonUnit),nrow=10)
+colnames(M)<-c("Year t","Invested Premium","Value of Units","Expected Invested Premium","Expected Value of Units","Expected Interests","Expected Trnsfr to Non-unit");print(M,digits = 5) 
+```    
+  
+__Step 4: Non-Unit Fund __
+This includes...
+```{r}
+########### For an In-force Policy ###########
+Prem_Fee<-c(Premium*Prem_Fee_rate1,Premium*rep(Prem_Fee_rate2,9))
+BS_Margins<-(Premium-Prem_Fee) * BS_rate
+Expenses<-c(Premium*Ini_Expense_rate, rep(0,9)) + Maint_Expense
+Death_Surr_Bft<-Value_Units
+########## Expect Amounts per Initial Policy ##########
+EPrem_Fee<-Prem_Fee * al[1:10]/al[1]
+EBS_Margins<-BS_Margins * al[1:10]/al[1]
+EExpenses<-Expenses * al[1:10]/al[1]
+EInterest_NonUnit<-(EPrem_Fee + EBS_Margins - EExpenses) * NonUnit_Earn_rate
+ETransfer_from_Unit<-ETransfer_to_NonUnit
+EDeath_Bft<-Death_Surr_Bft * ad_d[1:10]/al[1]
+ESurr_Bft<-Death_Surr_Bft * ad_w[1:10]/al[1]
+ETransfer<-EPrem_Fee + EBS_Margins - EExpenses + EInterest_NonUnit + ETransfer_from_Unit - EDeath_Bft - ESurr_Bft
+
+print("Non-Unit Fund Table")
+M<-matrix(c(1:10,Prem_Fee,BS_Margins,Expenses,Death_Surr_Bft,EPrem_Fee,EBS_Margins,EExpenses,EInterest_NonUnit,ETransfer_from_Unit,EDeath_Bft,ESurr_Bft,ETransfer),nrow=10)
+colnames(M)<-c("Year t","Premium-based Fees","Buy-Sell Margins","Expenses","Death/Surr. Bft","Expected Prem-based Fees","Expected BS Margins","Expected Expenses","Expected Interest", "Trnsfr from Unit Fund","Expected Death Bft","Expected Surr Bft","Expected Transfer");print(M,digits = 5) 
+```   
+  
+__(a)__  
+Profit signature is shown in the last column of the Non-Unit Fund Table.  
+As for the expected present value of transfer (rdr=12.5%):  
+```{r}
+rdr=0.125
+v<-1/(1+rdr)
+(NPV<-sum(v^(1:10) * ETransfer))
+```  
+  
+So the expected present value of transfer (rdr = 12.5%) is about __$34.67__.  
+__(b)__  
+Let Policy Value = Value of Units in the Unit Fund Table. Write a function in r to determine the new 9th policy value such that the last year's expected transfer is zero.
+```{r}
+Policy_Value<-Value_Units
+OBJ<-function(pv_9){
+  Policy_Value[9]<-pv_9
+  EPolicy_Value<-Policy_Value * al[2:11]/al[1]
+  EInterest_Unit<-(c(0,EPolicy_Value[1:9])+EInv_Prem)*Unit_Earn_rate
+  Change_EPolicy_Value<-c(EPolicy_Value[1],EPolicy_Value[2:10]-EPolicy_Value[1:9])
+  ETransfer_to_NonUnit<-EInv_Prem + EInterest_Unit - Change_EPolicy_Value
+  ETransfer_from_Unit<-ETransfer_to_NonUnit
+  ETransfer<-EPrem_Fee + EBS_Margins - EExpenses + EInterest_NonUnit + ETransfer_from_Unit - EDeath_Bft - ESurr_Bft
+  return(ETransfer[10])
+}
+NewPV9<-uniroot(OBJ,c(0,1000000))$root #Find NewPV9 such that last transfer is 0
+print(changePV9<-NewPV9-Value_Units[9],digits = 4)
+```  
+The change needed to add on 9th Policy Value is around __$3.713__.  
+  
+__(c)__  
+Decreased. Note that our earn rate is lower than the discounting reate. This means that if we receive profit earlier, our NPV will increase, and vice versa. 
+Here we obtained positive change needed for earlier policy value. In other words, we have to earn profit later in order to zeroise the negative transfer in last year. Hence the EPV decreased after zeroisation. Check the result in r: 
+```{r}
+#Old NPV = $34.67393
+#copy the codes from the previous chunk (inside OBJ function)
+Policy_Value[9]<-NewPV9
+  EPolicy_Value<-Policy_Value * al[2:11]/al[1]
+  EInterest_Unit<-(c(0,EPolicy_Value[1:9])+EInv_Prem)*Unit_Earn_rate
+  Change_EPolicy_Value<-c(EPolicy_Value[1],EPolicy_Value[2:10]-EPolicy_Value[1:9])
+  ETransfer_to_NonUnit<-EInv_Prem + EInterest_Unit - Change_EPolicy_Value
+  ETransfer_from_Unit<-ETransfer_to_NonUnit
+  ETransfer<-EPrem_Fee + EBS_Margins - EExpenses + EInterest_NonUnit + ETransfer_from_Unit - EDeath_Bft - ESurr_Bft
+
+(NewNPV = sum(v^(1:10) * ETransfer))     #slightly smaller than 34.67393
+```  
+  
